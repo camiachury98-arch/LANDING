@@ -1,5 +1,3 @@
-[index.html](https://github.com/user-attachments/files/33579330/index.html)
-# LANDING
 LANDING PARA VENTA
 <!doctype html>
 <html lang="es">
