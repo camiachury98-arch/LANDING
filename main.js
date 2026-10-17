@@ -228,9 +228,11 @@
       return 'Hola Camila, soy ' + d.nombre + '. Vengo de tu página y quiero agendar una cita contigo para sacar mi licencia.';
     }
 
-    // Envía los datos a Google Sheets (no bloquea si falla)
+    // Guarda los datos en Google Sheets y espera a que Google responda
+    // (máx. 4 s) antes de abrir WhatsApp: en el móvil, abrir WhatsApp
+    // antes de tiempo corta el envío.
     function saveToSheet(d) {
-      if (!CONFIG.SHEETS_URL) return;
+      if (!CONFIG.SHEETS_URL) return Promise.resolve();
       var body = new URLSearchParams({
         nombre: d.nombre, telefono: d.telefono, correo: d.correo, ciudad: d.ciudad,
         dia: answers.dia || '', horario: answers.horario || '',
@@ -238,11 +240,16 @@
         tiempo: answers.tiempo || '', presupuesto: answers.presupuesto || '',
         website: d.website
       });
-      try {
-        if (navigator.sendBeacon && navigator.sendBeacon(CONFIG.SHEETS_URL, body)) return;
-      } catch (err) { /* sigue con fetch */ }
-      fetch(CONFIG.SHEETS_URL, { method: 'POST', mode: 'no-cors', body: body, keepalive: true })
+      var send = fetch(CONFIG.SHEETS_URL, { method: 'POST', mode: 'no-cors', body: body, keepalive: true })
         .catch(function () {});
+      var timeout = new Promise(function (r) { setTimeout(r, 4000); });
+      return Promise.race([send, timeout]);
+    }
+
+    function openWhatsApp(link) {
+      var w = window.open(link, '_blank');
+      if (w) { try { w.opener = null; } catch (err) {} return; }
+      window.location.href = link; // navegadores de Instagram/Linktree bloquean ventanas nuevas
     }
 
     var lastLink = '';
@@ -260,18 +267,29 @@
       if (correo && !/^\S+@\S+\.\S+$/.test(correo)) { errorEl.textContent = 'Revisa tu correo electrónico.'; return; }
       if (!answers.dia || !answers.horario) { errorEl.textContent = 'Elige un día y un horario para tu llamada.'; return; }
       errorEl.textContent = '';
+      if (sending) return;
+      sending = true;
+      var btn = form.querySelector('button[type="submit"]');
+      var btnHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Enviando…';
+      lastLink = waLink(buildMessage({ nombre: nombre }));
       saveToSheet({
         nombre: nombre, telefono: telefono, correo: correo,
         ciudad: form.ciudad.value.trim(), website: form.website.value
+      }).then(function () {
+        btn.disabled = false;
+        btn.innerHTML = btnHtml;
+        sending = false;
+        go('done');
+        openWhatsApp(lastLink);
       });
-      lastLink = waLink(buildMessage({ nombre: nombre }));
-      window.open(lastLink, '_blank', 'noopener');
-      go('done');
     });
+    var sending = false;
 
     $('#waRetry').addEventListener('click', function (e) {
       e.preventDefault();
-      if (lastLink) window.open(lastLink, '_blank', 'noopener');
+      if (lastLink) openWhatsApp(lastLink);
     });
 
     go('1', false);
