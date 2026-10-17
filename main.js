@@ -10,10 +10,13 @@
      WHATSAPP: código de país + número, solo dígitos.
        Ej. Estados Unidos: '13055551234'  ·  Colombia: '573001234567'
      INSTAGRAM: enlace completo a tu perfil.
+     SHEETS_URL: la URL de la "Aplicación web" de Google Apps Script
+       (termina en /exec). Vacío = no se guarda en Google Sheets.
      --------------------------------------------------------- */
   var CONFIG = {
     WHATSAPP: '18035807278',
-    INSTAGRAM: 'https://www.instagram.com/camilaachuryusa/'
+    INSTAGRAM: 'https://www.instagram.com/camilaachuryusa/',
+    SHEETS_URL: 'https://script.google.com/macros/s/AKfycbxqyd7ZkxY6lR-qXPWreBXkZwqoIogF7mqFwW0IN4Tuab3H3iaqKcvtx_aVrcsWu6_6mw/exec'
   };
   window.__CAMILA__ = CONFIG;
 
@@ -47,12 +50,19 @@
       el.setAttribute('aria-label', text);
       el.textContent = '';
       var i = 0;
-      text.split('').forEach(function (ch) {
-        var s = document.createElement('span');
-        s.setAttribute('aria-hidden', 'true');
-        if (ch === ' ') { s.innerHTML = '&nbsp;'; s.style.display = 'inline-block'; }
-        else { s.className = 'char'; s.textContent = ch; s.style.setProperty('--i', i++); }
-        el.appendChild(s);
+      // Cada palabra en su propio bloque: el nombre solo se parte entre palabras
+      text.trim().split(/\s+/).forEach(function (word, w) {
+        if (w > 0) el.appendChild(document.createTextNode(' '));
+        var wrap = document.createElement('span');
+        wrap.setAttribute('aria-hidden', 'true');
+        wrap.style.display = 'inline-block';
+        wrap.style.whiteSpace = 'nowrap';
+        word.split('').forEach(function (ch) {
+          var s = document.createElement('span');
+          s.className = 'char'; s.textContent = ch; s.style.setProperty('--i', i++);
+          wrap.appendChild(s);
+        });
+        el.appendChild(wrap);
       });
     });
   }
@@ -213,36 +223,48 @@
       if (history.length) go(history.pop(), false);
     });
 
+    // Mensaje corto: los detalles quedan en Google Sheets
     function buildMessage(d) {
-      return [
-        'Hola Camila, acabo de completar la evaluación en tu página y quiero agendar una llamada.',
-        '',
-        '• Nombre: ' + d.nombre,
-        d.ciudad ? '• Ciudad: ' + d.ciudad : null,
-        d.correo ? '• Correo: ' + d.correo : null,
-        '• Día preferido: ' + answers.dia,
-        '• Horario: ' + answers.horario,
-        '',
-        '— Mis respuestas —',
-        '• Requisitos: ' + (answers.requisitos || '-'),
-        '• Situación: ' + (answers.situacion || '-'),
-        '• Tiempo disponible: ' + (answers.tiempo || '-'),
-        '• Presupuesto: ' + (answers.presupuesto || '-')
-      ].filter(function (l) { return l !== null; }).join('\n');
+      return 'Hola Camila, soy ' + d.nombre + '. Vengo de tu página y quiero agendar una cita contigo para sacar mi licencia.';
+    }
+
+    // Envía los datos a Google Sheets (no bloquea si falla)
+    function saveToSheet(d) {
+      if (!CONFIG.SHEETS_URL) return;
+      var body = new URLSearchParams({
+        nombre: d.nombre, telefono: d.telefono, correo: d.correo, ciudad: d.ciudad,
+        dia: answers.dia || '', horario: answers.horario || '',
+        requisitos: answers.requisitos || '', situacion: answers.situacion || '',
+        tiempo: answers.tiempo || '', presupuesto: answers.presupuesto || '',
+        website: d.website
+      });
+      try {
+        if (navigator.sendBeacon && navigator.sendBeacon(CONFIG.SHEETS_URL, body)) return;
+      } catch (err) { /* sigue con fetch */ }
+      fetch(CONFIG.SHEETS_URL, { method: 'POST', mode: 'no-cors', body: body, keepalive: true })
+        .catch(function () {});
     }
 
     var lastLink = '';
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var nombre = form.nombre.value.trim();
+      var telefono = form.telefono.value.trim();
       var correo = form.correo.value.trim();
+      var telOk = telefono.replace(/\D/g, '').length >= 7;
       form.nombre.classList.toggle('is-invalid', !nombre);
+      form.telefono.classList.toggle('is-invalid', !telOk);
       form.correo.classList.toggle('is-invalid', correo && !/^\S+@\S+\.\S+$/.test(correo));
       if (!nombre) { errorEl.textContent = 'Escribe tu nombre para continuar.'; form.nombre.focus(); return; }
+      if (!telOk) { errorEl.textContent = 'Escribe tu número de teléfono (WhatsApp).'; form.telefono.focus(); return; }
       if (correo && !/^\S+@\S+\.\S+$/.test(correo)) { errorEl.textContent = 'Revisa tu correo electrónico.'; return; }
       if (!answers.dia || !answers.horario) { errorEl.textContent = 'Elige un día y un horario para tu llamada.'; return; }
       errorEl.textContent = '';
-      lastLink = waLink(buildMessage({ nombre: nombre, ciudad: form.ciudad.value.trim(), correo: correo }));
+      saveToSheet({
+        nombre: nombre, telefono: telefono, correo: correo,
+        ciudad: form.ciudad.value.trim(), website: form.website.value
+      });
+      lastLink = waLink(buildMessage({ nombre: nombre }));
       window.open(lastLink, '_blank', 'noopener');
       go('done');
     });

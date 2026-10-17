@@ -143,9 +143,10 @@ body::before {
    ========================================================= */
 .hero {
   min-height: 100vh;
-  display: flex; flex-direction: column; align-items: center;
+  min-height: 100svh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center;
-  padding: 110px 16px 80px;
+  padding: 36px 16px;
   position: relative;
   background:
     radial-gradient(60% 45% at 85% 10%, rgba(191, 209, 222, .55), transparent 70%),
@@ -155,9 +156,10 @@ body::before {
 
 .hero__portrait {
   position: relative;
-  width: min(410px, 78vw);
+  /* Cabe en una pantalla: limitado también por la altura */
+  width: min(360px, 70vw, 36svh);
   aspect-ratio: 1;
-  margin: 10px 0 40px;
+  margin: 0 0 clamp(18px, 3.5svh, 36px);
   transition: transform .6s var(--ease);
 }
 .hero__blob {
@@ -182,14 +184,14 @@ body::before {
 .hero__name {
   font-family: var(--serif);
   font-weight: 600;
-  font-size: clamp(54px, 10vw, 112px);
+  font-size: clamp(48px, min(10vw, 9svh), 104px);
   line-height: .95;
   letter-spacing: -.01em;
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   color: var(--navy);
 }
 .hero__role {
-  margin: 0 0 26px;
+  margin: 0 0 clamp(14px, 2.5svh, 24px);
   font-family: var(--serif);
   font-style: italic;
   font-size: clamp(22px, 2.8vw, 30px);
@@ -206,9 +208,12 @@ body::before {
 .hero__lead {
   max-width: 620px;
   font-size: clamp(17px, 2vw, 20px);
+  line-height: 1.5;
   color: var(--ink-soft);
-  margin: 0 auto 36px;
+  margin: 0 auto clamp(20px, 3.5svh, 32px);
 }
+.btn--lg { padding: 20px 38px; font-size: 16.5px; }
+.hero .hero__time { margin-top: 14px; }
 
 .hero__card {
   width: min(560px, 100%);
@@ -404,6 +409,56 @@ body::before {
   cursor: pointer;
 }
 .quiz__back:hover { color: var(--gold); }
+
+/* =========================================================
+   PÁGINA DE ENCUESTA
+   ========================================================= */
+.nav__back {
+  font-weight: 700; font-size: 14px;
+  text-decoration: none;
+  padding: 11px 18px;
+  border-radius: 999px;
+  color: var(--navy);
+  box-shadow: inset 0 0 0 1.5px rgba(13, 43, 69, .25);
+  transition: box-shadow .3s;
+}
+.nav__back:hover { box-shadow: inset 0 0 0 1.5px var(--navy); }
+
+.survey-page {
+  background:
+    radial-gradient(60% 40% at 85% 0%, rgba(191, 209, 222, .5), transparent 70%),
+    radial-gradient(50% 35% at 5% 30%, rgba(164, 177, 167, .3), transparent 70%),
+    var(--cream);
+  min-height: 100vh;
+}
+.survey-intro {
+  text-align: center;
+  padding: 100px 16px 0;
+}
+.survey-intro__photo {
+  width: 112px; height: 112px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--white);
+  box-shadow: 0 0 0 2px var(--gold), var(--shadow);
+}
+.survey-intro .eyebrow { margin-bottom: 6px; }
+.survey-intro__name {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(40px, 6vw, 60px);
+  line-height: 1;
+  margin: 0 0 12px;
+  color: var(--navy);
+}
+.survey-intro__lead { margin: 0; color: var(--ink-soft); font-size: 15.5px; }
+.quiz-section--page {
+  background: none;
+  padding-top: 36px;
+}
+.footer--slim { padding-bottom: 44px; }
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 
 /* =========================================================
    RESULTADOS
@@ -663,8 +718,7 @@ body::before {
 @media (max-width: 560px) {
   body { font-size: 16px; }
   .nav__cta { padding: 10px 16px; font-size: 13px; }
-  .hero { padding-top: 96px; overflow: hidden; }
-  .hero__portrait { width: 68vw; }
+  .hero { overflow: hidden; }
   .hero__card { padding: 24px 18px 22px; }
   .fields { grid-template-columns: 1fr; }
   .option { padding: 18px 48px 18px 18px; font-size: 15.5px; }
